@@ -1,107 +1,130 @@
 $(document).ready(function(){
+var taskList = [];
 
-  var listo = [];
+var todoApp;
+var todoForm;
+var todoAddItem;
+var todoInput;
+var todoClear;
+var lists = [];
 
-  var Task = function(task){
-    this.task = task;
-    this.id = 'new';
-  }
-  function addTask(task, state){
-    if(!state) {
-      state = 'new';
-    }
-    if(task){
-      task = new Task(task);
-      task.id = state;
-      listo.push(task);
+var taskTemplate;
 
-      $('#newItemInput').val('');
-      $('#'+state+'List').append('<li class="list-group-item" id="item">' + task.task + '<span class="arrow pull-right"><i class="glyphicon glyphicon-arrow-right"></span></li>');
-      saveData();
-    }
-  }
+var stateList = ['new','working','complete']
 
-  function loadArray(arry, state){
-    for (var i=0;i<arry.length;i++){
-      addTask(arry[i], state);
-    }
-  }
+setUpForm();
 
-  function loadData(){
-    var newArry = localStorage['new'].split(" |||");
-    var inProgressArry = localStorage['new'].split(" |||");
-    var archivedArry = localStorage['new'].split(" |||");
 
-    loadArray(newArry,'new');
-    loadArray(inProgressArry,'inProgress');
-    loadArray(archivedArry,'archived');
-  }
 
-  function saveData(){
-    localStorage['new'] = listo.filter(function(item){return item.id==='new'}).map(function(item){return item.task}).join(' |||');
-    localStorage['inProgress'] = listo.filter(function(item){return item.id==='inProgress'}).map(function(item){return item.task}).join(' |||');
-    localStorage['archived'] = listo.filter(function(item){return item.id==='archived'}).map(function(item){return item.task}).join(' |||');
-  }
-  loadData();
+function Task(text, state){
+  if (!state)
+    {state = 0;}
+  //0 - new 
+  //1 - working
+  //2 - complete
+  console.log("Here");
+  this.text = text;
+  this.state = state;
+  this.element = taskTemplate.clone();
+  this.element.text(text);
+  this.element.on('click', this.advance.bind(this));
+  lists[state].append(this.element);
+}
 
-  $('#saveNewItem').on('click' , function(event){
-    event.preventDefault();
-    var task = $('#newItemInput').val().trim();
-    addTask(task);
-  });
-  $(document).on('click', '#item', function(e) {
-    e.preventDefault();
-    var task = this;
-    advanceTask(task);
-    saveData();
-    this.id = 'inProgress';
-    $('#currentList').append($(this));
-  });
-  $(document).on('click', '#inProgress', function (e) {
-        e.preventDefault();
-        var task = this;
-        advanceTask(task);
-        saveData();
-        task.id = "archived";
-        $('#archivedList').append($(this));
-  });
-  $(document).on('click', '#archived', function (e) {
-        e.preventDefault();
-        var task = this;
-        advanceTask(task);
-        saveData();
-        task.id = "archived";
-        $(this).remove();
-        console.log(listo);
-  });
-
-  function advanceTask(task){
-    var taskOrder = {
-      'new': 'inProgress',
-      'inProgress':"archived",
-      'archived':''
-    }
-    var listoItem = pluck(listo, 'task', $(task).text());
-    var nextState = taskOrder[listoItem.id];
-    if (nextState){
-      listoItem.id = nextState
+Task.prototype = {
+  advance:function(){
+    this.state +=1;
+    
+    if (this.state===3){
+      ////TODO put code to delete from master list
+      this.element.remove();
+      removeCompletedTasks();
+      saveStateList(2);
+      console.log(taskList);
     }else{
-      listo = listo.filter(function(item){
-        console.log(item);
-        console.log(listoItem);
-        console.log(item == listoItem);
-        return item!=listoItem;
-      });
+      lists[this.state].append(this.element);
+      saveStateList(this.state);
+      saveStateList(this.state-1);
     }
+
   }
+}
+
+
+
+console.log(todoClear);
+
+  function setUpForm(){
+    console.log("HERE");
+    todoApp = $("#todo-app");
+    todoForm = $("<form></form>");
+    todoAddItem = $("<button>New</button>");
+    todoInput = $("<input></input>");
+    todoClear = $("<button>Cancel</button>")
+    taskTemplate = $("<li></li>");
+
+    todoForm.append(todoInput);
+    todoForm.append(todoAddItem);
+    todoForm.append(todoClear); 
+    todoApp.append(todoForm);
+
+    lists[0] = $("<ul class = 'panel'>New Tasks</ul>");
+    lists[1] = $("<ul class = 'panel'>Working Tasks</ul>");
+    lists[2] = $("<ul class = 'panel'>Completed Tasks</ul>");
+
+    for (var i=0;i<3;i++){
+      todoApp.append(lists[i]);
+    }
+
+
+
+    
+    //------------------------------- Add Event Listeners
+
+    todoAddItem.on('click', function(){
+      var todoText = todoInput.val();
+      if (todoText){
+        todoInput.val('');
+        var task = new Task(todoText, 0);
+        taskList.push(task);
+      }
+    });
+
+    todoClear.on('click', function(){
+      for (var i=0;i<3;i++){
+        loadStateList(i);
+      }
+    });
+
+    
+  }
+  function saveStateList(state){
+    var stateFiltered = taskList.filter(function(item){
+      return item.state ===state;
+    });
+    var arryToCombine = stateFiltered.map(function(item){
+      return item.text;
+    });
+    localStorage['ToDoAppStateString' + state] = arryToCombine.join(" |||");
+  }
+  function loadStateList(state){
+    console.log(localStorage['ToDoAppStateString' + state]);
+    var str = localStorage['ToDoAppStateString' + state] || "";
+    var stateArry = str.split(" |||");
+
+    for (var i=0;i<stateArry.length;i++){
+      console.log(stateArry[i]);
+      var task = new Task(stateArry[i], state);
+      //taskList.push(task);
+    }
+
+  }
+  function removeCompletedTasks(){
+  taskList = taskList.filter(function(item){
+    return item.state<3;
+  });
+}
 });
 
-//select object by attribute.
-function pluck(arryOfObj, attr, search){
-  for (var i=0;i<arryOfObj.length;i++){
-    if (arryOfObj[i][attr] === search){
-      return arryOfObj[i];
-    }
-  }
-  return {};
-}
+
+
