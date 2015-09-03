@@ -1,4 +1,8 @@
+//See if I can figure out why it won't work on initial laod, but will after a short delay....
+//Really don't want to just cheat and call a delayed callback.
+
 $(document).ready(function(){
+
 var taskList = [];
 
 var todoApp;
@@ -14,15 +18,13 @@ var stateList = ['new','working','complete']
 
 setUpForm();
 
-
-
 function Task(text, state){
   if (!state)
     {state = 0;}
   //0 - new 
   //1 - working
   //2 - complete
-  console.log("Here");
+  
   this.text = text;
   this.state = state;
   this.element = taskTemplate.clone();
@@ -36,11 +38,10 @@ Task.prototype = {
     this.state +=1;
     
     if (this.state===3){
-      ////TODO put code to delete from master list
       this.element.remove();
       removeCompletedTasks();
       saveStateList(2);
-      console.log(taskList);
+
     }else{
       lists[this.state].append(this.element);
       saveStateList(this.state);
@@ -52,10 +53,12 @@ Task.prototype = {
 
 
 
-console.log(todoClear);
+loadState();
+
+
 
   function setUpForm(){
-    console.log("HERE");
+
     todoApp = $("#todo-app");
     todoForm = $("<form></form>");
     todoAddItem = $("<button>New</button>");
@@ -82,21 +85,24 @@ console.log(todoClear);
     //------------------------------- Add Event Listeners
 
     todoAddItem.on('click', function(){
-      var todoText = todoInput.val();
+      var todoText = todoInput.val().trim();
       if (todoText){
         todoInput.val('');
         var task = new Task(todoText, 0);
         taskList.push(task);
+        saveStateList(0);
       }
     });
 
-    todoClear.on('click', function(){
-      for (var i=0;i<3;i++){
-        loadStateList(i);
-      }
-    });
+    todoClear.on('click', loadState);
 
     
+  }
+
+  function loadState(){
+    for (var i=0;i<3;i++){
+  loadStateList(i);
+}
   }
   function saveStateList(state){
     var stateFiltered = taskList.filter(function(item){
@@ -107,15 +113,20 @@ console.log(todoClear);
     });
     localStorage['ToDoAppStateString' + state] = arryToCombine.join(" |||");
   }
+
   function loadStateList(state){
-    console.log(localStorage['ToDoAppStateString' + state]);
-    var str = localStorage['ToDoAppStateString' + state] || "";
+
+    var str = localStorage['ToDoAppStateString' + state];
+    if (str === undefined){
+      return;
+    }
     var stateArry = str.split(" |||");
 
     for (var i=0;i<stateArry.length;i++){
-      console.log(stateArry[i]);
-      var task = new Task(stateArry[i], state);
-      //taskList.push(task);
+      if(stateArry[i]){
+        var task = new Task(stateArry[i], state);
+        taskList.push(task);
+      }
     }
 
   }
